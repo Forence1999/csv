@@ -23,6 +23,18 @@ describe('Webview reorder and resize interactions', () => {
     assert.ok(source.includes('row-resize'));
   });
 
+  it('allows column resizing from the right edge of any data cell', () => {
+    assert.ok(source.includes('const getColumnCell = cell =>'));
+    const resizeStart = source.indexOf('const getResizeEdgeInfo = (target, e) => {');
+    const rowResizeStart = source.indexOf('if (isRowIndexCell(target))', resizeStart);
+    assert.notStrictEqual(resizeStart, -1);
+    assert.notStrictEqual(rowResizeStart, -1);
+    const columnResizeSection = source.slice(resizeStart, rowResizeStart);
+    assert.ok(columnResizeSection.includes('const columnCell = getColumnCell(target);'));
+    assert.ok(columnResizeSection.includes('const rightEdgeDelta = columnCell.rect.right - e.clientX;'));
+    assert.ok(!columnResizeSection.includes('isColumnHeaderCell(target)'));
+  });
+
   it('resets resized column/row on edge double-click', () => {
     assert.ok(source.includes('getResizeEdgeInfo'));
     assert.ok(source.includes('table.addEventListener(\'dblclick\''));

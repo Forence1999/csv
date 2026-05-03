@@ -161,6 +161,35 @@ describe('CsvEditorProvider utility methods', () => {
     assert.strictEqual(resolveFontSize(undefined, undefined), 14);
   });
 
+  it('normalizes cell alignment settings to supported CSS values', () => {
+    const resolveHorizontal = CsvEditorProvider.__test.resolveCellHorizontalAlignment;
+    const resolveVertical = CsvEditorProvider.__test.resolveCellVerticalAlignment;
+
+    assert.strictEqual(resolveHorizontal('left'), 'left');
+    assert.strictEqual(resolveHorizontal('center'), 'center');
+    assert.strictEqual(resolveHorizontal('right'), 'right');
+    assert.strictEqual(resolveHorizontal('invalid'), 'left');
+
+    assert.strictEqual(resolveVertical('top'), 'top');
+    assert.strictEqual(resolveVertical('middle'), 'middle');
+    assert.strictEqual(resolveVertical('bottom'), 'bottom');
+    assert.strictEqual(resolveVertical('invalid'), 'middle');
+  });
+
+  it('builds shared table cell css with configured alignment', () => {
+    const buildTableCellCss = CsvEditorProvider.__test.buildTableCellCss;
+
+    const css = buildTableCellCss(6, '#ccc', 'right', 'bottom');
+    assert.ok(css.includes('padding: 6px 8px;'));
+    assert.ok(css.includes('border: 1px solid #ccc;'));
+    assert.ok(css.includes('text-align: right;'));
+    assert.ok(css.includes('vertical-align: bottom;'));
+
+    const fallbackCss = buildTableCellCss(4, '#555', 'invalid', 'invalid');
+    assert.ok(fallbackCss.includes('text-align: left;'));
+    assert.ok(fallbackCss.includes('vertical-align: middle;'));
+  });
+
   it('computes paste plan to fill rectangular selection for single-cell clipboard value', () => {
     const plan = CsvEditorProvider.__test.computePastePlan(
       [['X']],

@@ -3,6 +3,8 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 
 type SeparatorMode = 'extension' | 'auto' | 'default';
+type CellHorizontalAlignment = 'left' | 'center' | 'right';
+type CellVerticalAlignment = 'top' | 'middle' | 'bottom';
 type SeparatorSettings = {
   mode: SeparatorMode;
   defaultSeparator: string;
@@ -384,6 +386,37 @@ class CsvEditorController {
       CsvEditorController.normalizeFontSize(editorFontSize) ??
       14
     );
+  }
+
+  private static resolveCellHorizontalAlignment(value: unknown): CellHorizontalAlignment {
+    switch (value) {
+      case 'center':
+      case 'right':
+        return value;
+      default:
+        return 'left';
+    }
+  }
+
+  private static resolveCellVerticalAlignment(value: unknown): CellVerticalAlignment {
+    switch (value) {
+      case 'top':
+      case 'bottom':
+        return value;
+      default:
+        return 'middle';
+    }
+  }
+
+  private static buildTableCellCss(
+    cellPadding: number,
+    borderColor: string,
+    horizontalAlignment: unknown,
+    verticalAlignment: unknown
+  ): string {
+    const resolvedHorizontal = CsvEditorController.resolveCellHorizontalAlignment(horizontalAlignment);
+    const resolvedVertical = CsvEditorController.resolveCellVerticalAlignment(verticalAlignment);
+    return `padding: ${cellPadding}px 8px; border: 1px solid ${borderColor}; font-size: inherit; text-align: ${resolvedHorizontal}; vertical-align: ${resolvedVertical};`;
   }
 
   public getDocumentUri(): vscode.Uri {
@@ -1384,6 +1417,12 @@ class CsvEditorController {
     );
 
     const cellPadding = config.get<number>('cellPadding', 4);
+    const cellHorizontalAlignment = CsvEditorController.resolveCellHorizontalAlignment(
+      config.get<string>('cellHorizontalAlignment', 'left')
+    );
+    const cellVerticalAlignment = CsvEditorController.resolveCellVerticalAlignment(
+      config.get<string>('cellVerticalAlignment', 'middle')
+    );
     const data = this.trimTrailingEmptyRows((parsed.data || []) as string[][]);
     const treatHeader = this.getEffectiveHeader(data, hiddenRows);
     const clickableLinks = config.get<boolean>('clickableLinks', true);
@@ -1421,6 +1460,8 @@ class CsvEditorController {
       fontFamily,
       fontSize,
       cellPadding,
+      cellHorizontalAlignment,
+      cellVerticalAlignment,
       separator,
       tableHtml,
       chunksJson,
@@ -1673,6 +1714,8 @@ class CsvEditorController {
     fontFamily: string;
     fontSize: number;
     cellPadding: number;
+    cellHorizontalAlignment: CellHorizontalAlignment;
+    cellVerticalAlignment: CellVerticalAlignment;
     separator: string;
     tableHtml: string;
     chunksJson: string;
@@ -1682,8 +1725,14 @@ class CsvEditorController {
     mouseWheelZoomEnabled: boolean;
     mouseWheelZoomInvert: boolean;
   }): string {
-    const { webview, nonce, fontFamily, fontSize, cellPadding, separator, tableHtml, chunksJson, extraColumnColorCss, nextChunkStart, hasRemoteChunks, mouseWheelZoomEnabled, mouseWheelZoomInvert } = args;
+    const { webview, nonce, fontFamily, fontSize, cellPadding, cellHorizontalAlignment, cellVerticalAlignment, separator, tableHtml, chunksJson, extraColumnColorCss, nextChunkStart, hasRemoteChunks, mouseWheelZoomEnabled, mouseWheelZoomInvert } = args;
     const isDark = vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.Dark;
+    const tableCellCss = CsvEditorController.buildTableCellCss(
+      cellPadding,
+      isDark ? '#555' : '#ccc',
+      cellHorizontalAlignment,
+      cellVerticalAlignment
+    );
     // Build script URI using file path for compatibility (older APIs may lack Uri.joinPath)
     const scriptUri = webview.asWebviewUri(
       vscode.Uri.file(path.join(this.context.extensionPath, 'media', 'main.js'))
@@ -1704,7 +1753,7 @@ class CsvEditorController {
       body { font-family: ${this.escapeCss(fontFamily)}; font-size: ${fontSize}px; margin: 0; padding: 0; user-select: none; }
       .table-container { overflow: auto; height: 100vh; }
       table { border-collapse: collapse; width: max-content; }
-      th, td { padding: ${cellPadding}px 8px; border: 1px solid ${isDark ? '#555' : '#ccc'}; font-size: inherit; }
+      th, td { ${tableCellCss} }
       th { position: sticky; top: 0; background-color: ${isDark ? '#1e1e1e' : '#ffffff'}; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
       td { overflow: visible; white-space: pre-wrap; overflow-wrap: anywhere; }
       td.selected, th.selected { background-color: ${isDark ? '#333333' : '#cce0ff'} !important; }
@@ -2697,6 +2746,25 @@ export class CsvEditorProvider implements vscode.CustomTextEditorProvider {
     },
     resolveEffectiveFontSize(csvFontSize: unknown, editorFontSize: unknown): number {
       return (CsvEditorController as any).resolveEffectiveFontSize(csvFontSize, editorFontSize);
+    },
+    resolveCellHorizontalAlignment(value: unknown): CellHorizontalAlignment {
+      return (CsvEditorController as any).resolveCellHorizontalAlignment(value);
+    },
+    resolveCellVerticalAlignment(value: unknown): CellVerticalAlignment {
+      return (CsvEditorController as any).resolveCellVerticalAlignment(value);
+    },
+    buildTableCellCss(
+      cellPadding: number,
+      borderColor: string,
+      horizontalAlignment: unknown,
+      verticalAlignment: unknown
+    ): string {
+      return (CsvEditorController as any).buildTableCellCss(
+        cellPadding,
+        borderColor,
+        horizontalAlignment,
+        verticalAlignment
+      );
     },
     hslToHex(h: number, s: number, l: number): string {
       const c: any = new (CsvEditorController as any)({} as any);

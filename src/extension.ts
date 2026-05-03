@@ -89,6 +89,8 @@ export function activate(context: vscode.ExtensionContext) {
     const keys = [
       'csv.fontFamily',
       'csv.cellPadding',
+      'csv.cellHorizontalAlignment',
+      'csv.cellVerticalAlignment',
       'csv.columnColorMode',
       'csv.columnColorPalette',
       'csv.diffUseThemeForeground',
